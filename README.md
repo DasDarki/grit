@@ -88,6 +88,13 @@ node creation, spends its time inside Godot itself, so compiling the script chan
 
 ## Getting started
 
+Clone this repository first:
+
+```sh
+git clone https://github.com/DasDarki/grit.git
+cd grit
+```
+
 Grit builds from source. You need everything required to [build Godot from source](https://docs.godotengine.org/en/stable/engine_details/development/compiling/index.html)
 (Python 3.9+, SCons 4.0+ and a C++ compiler) plus git. A full build takes a few minutes on a modern machine. Check
 your system first:
@@ -206,7 +213,8 @@ someone else.
 
 `tests/projects/flappy` is a small Flappy Bird clone that uses Grit the way a real game would: an inner class for the
 pipes, typed arrays, vector math, signals with lambda handlers and an `await` on a timer. It needs no assets, everything
-is drawn in `_draw()`.
+is drawn in `_draw()`. It ships `Linux`, `Linux Stripped` and `Windows Desktop` export presets, so on a Windows machine
+you can build it the same way with `grit game tests/projects/flappy "Windows Desktop"`.
 
 ```sh
 python3 tools/grit.py export tests/projects/flappy Linux build/flappy.pck
@@ -226,12 +234,12 @@ and the time, which is what `compare` uses. The simulation currently runs about 
 
 ## Limitations
 
-- Only tested on Linux x86_64 with GCC and Clang. Windows, macOS, mobile and web exports have not been tested.
+- Developed and tested on Linux x86_64 with GCC and Clang. The engine module and generated code also compile on
+  Windows with MSVC (checked in CI), so Windows should work, but its native code has not been verified at runtime
+  there yet. macOS, mobile and web are untested.
 - Requires Godot 4.7.2 with the Grit patch and custom export templates.
 - Native code only runs in exported games; the editor always uses the VM.
 - Breakpoints and stepping in native code are implemented for debug templates but have not been tested with the
   remote debugger yet. The debugger shows no local variables for native functions, and native functions do not appear
   in the profiler.
 - A few rare constructs stay in the VM, for example lambdas or `await` inside `assert`.
-- Calls between native functions and property access on engine objects still go through the engine, so they are not
-  faster than in the VM yet.
