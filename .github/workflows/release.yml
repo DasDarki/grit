@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and release Linux binaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - name: Checkout Grit
+        uses: actions/checkout@v4
+        with:
+          path: grit
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config lld scons \
+            libx11-dev libxcursor-dev libxinerama-dev libxi-dev libxrandr-dev \
+            libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libpulse-dev \
+            libudev-dev libwayland-dev libdbus-1-dev
+
+      - name: Cache SCons objects
+        uses: actions/cache@v4
+        with:
+          path: scons-cache
+          key: scons-release-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            scons-release-${{ runner.os }}-
+
+      - name: Build editor and templates
+        working-directory: grit
+        env:
+          CACHE_PATH: ${{ github.workspace }}/scons-cache
+        run: |
+          python3 tools/grit.py setup
+          python3 tools/grit.py build editor --jobs "$(nproc)" linker=lld accesskit=no cache_path="$CACHE_PATH"
+          python3 tools/grit.py build template_release --jobs "$(nproc)" linker=lld cache_path="$CACHE_PATH"
+          python3 tools/grit.py build template_debug --jobs "$(nproc)" linker=lld cache_path="$CACHE_PATH"
+
+      - name: Verify conformance
+        working-directory: grit
+        run: |
+          python3 tools/grit.py conformance --jobs "$(nproc)" \
+            linker=lld accesskit=no cache_path="${{ github.workspace }}/scons-cache"
+
+      - name: Package binaries
+        working-directory: grit
+        run: |
+          python3 tools/grit.py package dist
+          cp README.md dist/README.md
+          tar -czf "grit-${GITHUB_REF_NAME}-linux-x86_64.tar.gz" -C dist .
+          sha256sum "grit-${GITHUB_REF_NAME}-linux-x86_64.tar.gz" > SHA256SUMS
+
+      - name: Write release notes
+        working-directory: grit
+        run: |
+          cat > release-notes.md <<'NOTES'
+          Prebuilt Grit binaries for Linux x86_64, built from this tag against Godot 4.7.2-stable.
+
+          The archive contains:
+          - `godot.linuxbsd.editor.x86_64` - the Grit editor. Use it to open and export your project; it generates the native C++ into `res://.godot/grit/generated`.
+          - `godot.linuxbsd.template_release.x86_64` and `godot.linuxbsd.template_debug.x86_64` - base export templates. They run games but fall back to the GDScript VM.
+          - `patches/` - the engine patch these binaries were built with.
+
+          To turn your own project into a native game with these binaries, place the Godot source next to this repository (or run `python3 tools/grit.py setup`) and run one command:
+
+          ```sh
+          python3 tools/grit.py game path/to/project "Linux"
+          ```
+
+          It exports the project and builds a template that links your project's native code, then writes a ready-to-run game into `build/games/`. See the README for details.
+
+          These binaries are built with `accesskit=no`, so the editor has no screen-reader support. Grit is highly experimental; do not ship games with it yet.
+          NOTES
+
+      - name: Create GitHub release
+        working-directory: grit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "Grit ${GITHUB_REF_NAME}" \
+            --notes-file release-notes.md \
+            "grit-${GITHUB_REF_NAME}-linux-x86_64.tar.gz" \
+            "SHA256SUMS"

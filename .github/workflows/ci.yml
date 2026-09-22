@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conformance:
+    name: Conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout Grit
+        uses: actions/checkout@v4
+        with:
+          path: grit
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config lld scons \
+            libx11-dev libxcursor-dev libxinerama-dev libxi-dev libxrandr-dev \
+            libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libpulse-dev \
+            libudev-dev libwayland-dev libdbus-1-dev
+
+      - name: Cache SCons objects
+        uses: actions/cache@v4
+        with:
+          path: scons-cache
+          key: scons-conformance-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            scons-conformance-${{ runner.os }}-
+
+      - name: Run conformance suite
+        working-directory: grit
+        run: |
+          python3 tools/grit.py setup
+          python3 tools/grit.py conformance --jobs "$(nproc)" \
+            linker=lld accesskit=no cache_path="${{ github.workspace }}/scons-cache"
