@@ -390,6 +390,26 @@ def which_version(executable, arguments):
     return path, output[0] if output else ""
 
 
+def detect_msvc():
+    if shutil.which("cl"):
+        return "cl (MSVC on PATH)"
+    program_files = os.environ.get("ProgramFiles(x86)") or os.environ.get("ProgramFiles") or ""
+    vswhere = Path(program_files) / "Microsoft Visual Studio" / "Installer" / "vswhere.exe"
+    if not vswhere.exists():
+        return None
+    try:
+        result = subprocess.run(
+            [str(vswhere), "-latest", "-products", "*", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "displayName"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    lines = result.stdout.strip().splitlines()
+    return f"MSVC: {lines[0]}" if lines else None
+
+
 MINIMUM_PYTHON = (3, 9)
 
 
@@ -442,28 +462,33 @@ def doctor(arguments):
     git_path, git_version = which_version("git", ["--version"])
     checks.append(("git", git_path is not None, git_version or "not found"))
 
-    scons_path = shutil.which("scons")
-    scons_ok = scons_path is not None
+    scons_invocation = scons_command()
+    scons_ok = scons_invocation == ["scons"] and shutil.which("scons") is not None
+    scons_ok = scons_ok or scons_invocation != ["scons"]
     scons_detail = "not found"
     if scons_ok:
-        scons_output = subprocess.run(["scons", "--version"], capture_output=True, text=True).stdout
+        scons_output = subprocess.run([*scons_invocation, "--version"], capture_output=True, text=True).stdout
         match = re.search(r"v(\d+)\.(\d+)\.(\d+)", scons_output)
-        scons_detail = f"SCons {match.group(0)}" if match else "installed"
+        via = "" if scons_invocation == ["scons"] else " (via python -m SCons)"
+        scons_detail = (f"SCons {match.group(0)}" if match else "installed") + via
         if match and (int(match.group(1)), int(match.group(2))) < (4, 0):
             scons_ok = False
             scons_detail += " (need 4.0 or newer)"
     checks.append(("scons", scons_ok, scons_detail))
 
-    compiler = None
-    for candidate in ("g++", "clang++", "c++"):
-        compiler_path, compiler_version = which_version(candidate, ["--version"])
-        if compiler_path:
-            compiler = (candidate, compiler_version)
-            break
-    checks.append(("C++ compiler", compiler is not None, f"{compiler[0]}: {compiler[1]}" if compiler else "no g++, clang++ or c++ found"))
-
-    pkg_path, pkg_version = which_version("pkg-config", ["--version"])
-    checks.append(("pkg-config", pkg_path is not None, pkg_version or "not found (needed on Linux)"))
+    if sys.platform == "win32":
+        compiler_detail = detect_msvc()
+        checks.append(("C++ compiler", compiler_detail is not None, compiler_detail or "no MSVC found (install Visual Studio Build Tools with the C++ workload)"))
+    else:
+        compiler = None
+        for candidate in ("g++", "clang++", "c++"):
+            compiler_path, compiler_version = which_version(candidate, ["--version"])
+            if compiler_path:
+                compiler = (candidate, compiler_version)
+                break
+        checks.append(("C++ compiler", compiler is not None, f"{compiler[0]}: {compiler[1]}" if compiler else "no g++, clang++ or c++ found"))
+        pkg_path, pkg_version = which_version("pkg-config", ["--version"])
+        checks.append(("pkg-config", pkg_path is not None, pkg_version or "not found (needed on Linux)"))
 
     required_names = ("python 3.9+ on PATH", "git", "scons", "C++ compiler")
     required_ok = all(ok for name, ok, _ in checks if name in required_names)
