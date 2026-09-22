@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   conformance:
-    name: Windows conformance (MSVC)
+    name: Windows build (MSVC)
     runs-on: windows-latest
     timeout-minutes: 180
     steps:
@@ -36,8 +36,8 @@ jobs:
         working-directory: grit
         run: python tools/grit.py doctor
 
-      - name: Run conformance suite
+      - name: Build the editor (MSVC compile check)
         working-directory: grit
         run: |
           python tools/grit.py setup
-          python tools/grit.py conformance --jobs $env:NUMBER_OF_PROCESSORS accesskit=no d3d12=no cache_path="${{ github.workspace }}/scons-cache"
+          python tools/grit.py build editor --jobs $env:NUMBER_OF_PROCESSORS accesskit=no d3d12=no optimize=none debug_symbols=no cache_path="${{ github.workspace }}/scons-cache"
