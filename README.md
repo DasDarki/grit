@@ -88,13 +88,9 @@ node creation, spends its time inside Godot itself, so compiling the script chan
 
 ## Getting started
 
-Every tagged release publishes prebuilt Linux x86_64 binaries (the Grit editor and base export templates) under
-[Releases](../../releases), so you do not have to build the editor yourself. Download the archive to export projects;
-you only compile when you build a template that links your project's native code. On other platforms, or to develop
-Grit itself, build from source as below.
-
-You need everything required to [build Godot from source](https://docs.godotengine.org/en/stable/engine_details/development/compiling/index.html)
-(Python 3.9+, SCons 4.0+ and a C++ compiler) plus git. Check your system first:
+Grit builds from source. You need everything required to [build Godot from source](https://docs.godotengine.org/en/stable/engine_details/development/compiling/index.html)
+(Python 3.9+, SCons 4.0+ and a C++ compiler) plus git. A full build takes a few minutes on a modern machine. Check
+your system first:
 
 ```sh
 python3 tools/grit.py doctor
@@ -203,8 +199,8 @@ To profile a single benchmark, run the exported game with `-- --only=<name>` and
 for example `./build/benchmark.x86_64 --headless -- --only=node_properties --repeat=20`. Exporting with
 `extra_suffix=profile debug_symbols=yes` builds a separate template with symbols for tools such as `perf`.
 
-`python3 tools/grit.py package <dir>` copies the built editor and templates into a directory; the release workflow
-uses it to assemble the published archive.
+`grit package <dir>` copies the built editor and templates into a directory, for example to share a build with
+someone else.
 
 ### Flappy test game
 
