@@ -136,6 +136,10 @@ HashSet<String> GritProjectCompiler::strippable_functions(const LocalVector<Grit
 	return strippable;
 }
 
+static String normalize_newlines(const String &p_source) {
+	return p_source.replace("\r\n", "\n").replace("\r", "\n");
+}
+
 Error GritProjectCompiler::compile_script(const ScriptSource &p_source, LocalVector<GritFunction> &r_functions) {
 	Error error = OK;
 	Ref<GDScript> script = p_source.script;
@@ -145,7 +149,7 @@ Error GritProjectCompiler::compile_script(const ScriptSource &p_source, LocalVec
 			ERR_PRINT(vformat("Grit: could not load \"%s\".", p_source.path));
 			return error != OK ? error : ERR_CANT_OPEN;
 		}
-		if (script->get_source_code() != p_source.code) {
+		if (normalize_newlines(script->get_source_code()) != normalize_newlines(p_source.code)) {
 			ERR_PRINT(vformat("Grit: \"%s\" has unsaved changes. Save all scripts before exporting.", p_source.path));
 			return ERR_FILE_CANT_READ;
 		}
