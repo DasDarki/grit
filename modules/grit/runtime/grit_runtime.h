@@ -269,6 +269,7 @@ Variant load_script(const GDScript *p_context, const String &p_reference);
 Variant native_class(const StringName &p_name);
 Variant engine_singleton(const StringName &p_name);
 Variant packed_array_constant(Variant::Type p_type, std::initializer_list<Variant> p_elements);
+Variant utility_callable(const StringName &p_name);
 Variant array_constant(std::initializer_list<Variant> p_elements, Variant::Type p_builtin_type, const StringName &p_native_type, const Variant &p_script_type, bool p_read_only);
 Variant dictionary_constant(std::initializer_list<Variant> p_pairs, Variant::Type p_key_builtin_type, const StringName &p_key_native_type, const Variant &p_key_script_type, Variant::Type p_value_builtin_type, const StringName &p_value_native_type, const Variant &p_value_script_type, bool p_read_only);
 Variant typed_array(Variant::Type p_builtin_type, const StringName &p_native_type, const Variant &p_script_type);

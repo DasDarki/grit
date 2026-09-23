@@ -21,8 +21,8 @@ exported game, and every function Grit cannot handle keeps running in the GDScri
 
 ## Features
 
-- **Broad GDScript coverage:** 1537 of the 1540 functions in Godot's own GDScript test suite compile to native code,
-  and all 499 test assertions pass when running natively.
+- **Broad GDScript coverage:** all 1540 functions in Godot's own GDScript test suite compile to native code, and all
+  499 test assertions pass when running natively.
 - **Unboxed values:** typed `int`, `float` and `bool` as well as value types such as `Vector2`, `Color`, `String` or
   `Transform3D` live in plain C++ variables instead of `Variant`.
 - **Direct engine calls:** operations the VM validates at compile time call Godot's pointer APIs directly. Engine

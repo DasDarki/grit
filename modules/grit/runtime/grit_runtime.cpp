@@ -2,6 +2,7 @@
 
 #include "modules/gdscript/gdscript_cache.h"
 #include "modules/gdscript/gdscript_lambda_callable.h"
+#include "modules/gdscript/gdscript_utility_callable.h"
 
 #include "core/config/engine.h"
 #include "core/debugger/script_debugger.h"
@@ -325,6 +326,10 @@ Variant native_class(const StringName &p_name) {
 	const int *index = language->get_global_map().getptr(p_name);
 	ERR_FAIL_NULL_V_MSG(index, Variant(), vformat("Grit: native class \"%s\" is not registered.", p_name));
 	return language->get_global_array()[*index];
+}
+
+Variant utility_callable(const StringName &p_name) {
+	return Callable(memnew(GDScriptUtilityCallable(p_name)));
 }
 
 Variant packed_array_constant(Variant::Type p_type, std::initializer_list<Variant> p_elements) {

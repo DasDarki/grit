@@ -1,6 +1,8 @@
 #include "grit_cpp_emitter.h"
 
 #include "modules/gdscript/gdscript.h"
+#include "modules/gdscript/gdscript_utility_callable.h"
+#include "modules/gdscript/gdscript_utility_functions.h"
 
 #include "core/config/engine.h"
 #include "core/io/resource.h"
@@ -206,8 +208,17 @@ static String value_initializer(const Variant &p_value) {
 		}
 		case Variant::RID:
 			return p_value.operator ::RID() == ::RID() ? String("Variant(RID())") : String();
-		case Variant::CALLABLE:
-			return p_value.operator Callable() == Callable() ? String("Variant(Callable())") : String();
+		case Variant::CALLABLE: {
+			const Callable callable = p_value.operator Callable();
+			if (callable == Callable()) {
+				return "Variant(Callable())";
+			}
+			const StringName method = callable.get_method();
+			if (method != StringName() && (Variant::has_utility_function(method) || GDScriptUtilityFunctions::function_exists(method)) && Callable(memnew(GDScriptUtilityCallable(method))) == callable) {
+				return "GritRuntime::utility_callable(StringName(String::utf8(\"" + String(method).c_escape() + "\")))";
+			}
+			return String();
+		}
 		case Variant::SIGNAL:
 			return p_value.operator Signal() == Signal() ? String("Variant(Signal())") : String();
 		case Variant::PACKED_BYTE_ARRAY:
