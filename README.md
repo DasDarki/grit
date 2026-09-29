@@ -8,7 +8,7 @@
 
 > [!WARNING]
 > Grit is **highly experimental**. It needs a patched engine, custom export templates and has so far only been
-> tested on Linux x86_64. Expect rough edges, do not ship games with it yet and always keep a way to fall back to the
+> tested on Linux x86_64 and Windows x86_64. Expect rough edges, do not ship games with it yet and always keep a way to fall back to the
 > regular GDScript VM.
 
 ## What is Grit?
@@ -234,9 +234,9 @@ and the time, which is what `compare` uses. The simulation currently runs about 
 
 ## Limitations
 
-- Developed and tested on Linux x86_64 with GCC and Clang. The engine module and generated code also compile on
-  Windows with MSVC (checked in CI), so Windows should work, but its native code has not been verified at runtime
-  there yet. macOS, mobile and web are untested.
+- Developed and tested on Linux x86_64 with GCC and Clang, and verified on Windows x86_64 with MSVC: the whole GDScript
+  test suite compiles and passes natively there (1540/1540 functions, 499/499 assertions) and the benchmark project
+  produces identical results to the VM. macOS, mobile and web are untested.
 - Requires Godot 4.7.2 with the Grit patch and custom export templates.
 - Native code only runs in exported games; the editor always uses the VM.
 - Breakpoints and stepping in native code are implemented for debug templates but have not been tested with the
