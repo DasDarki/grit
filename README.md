@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> Since the 09.11.2026 video by [Gamefromscratch](https://www.youtube.com/watch?v=_GahDfiwdVU) was released, this project has received a bit more attention again. A small piece of information regarding the apparent standstill from the outside: the project is not dead. There’s simply not much more to do. Currently, it mainly needs a lot of testing. And testing takes a lot of time, which I don’t have due to my private life. If Godot 4.8 is released, I will of course make sure to make Grit compatible. If you have any questions or find any bugs, or if you can help with testing or find bugs or problems there, please open an issue.
+
 <p align="center">
   <img src="assets/logo.png" alt="Grit logo" width="160">
 </p>
