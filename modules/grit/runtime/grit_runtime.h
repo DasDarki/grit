@@ -124,9 +124,53 @@ _FORCE_INLINE_ T *internal_pointer(Variant &r_value) {
 	return &VariantInternalAccessor<T>::get(&r_value);
 }
 
+// Copies of a Variant that holds a packed array share one PackedArrayRef. Gives r_value a PackedArrayRef of its own, so
+// a result written through internal_pointer() doesn't also change every local or member copied from r_value. The value
+// is kept, because the call writing the result may read r_value too (e.g. `list = list.slice(1)`), and the Vector inside
+// is copy-on-write, so its elements aren't copied.
+template <typename T>
+_FORCE_INLINE_ void unshare_packed_array(Variant &r_value) {
+	r_value = Variant(VariantInternalAccessor<Vector<T>>::get(&r_value));
+}
+
 _FORCE_INLINE_ void prepare(Variant &r_value, Variant::Type p_type) {
 	if (r_value.get_type() != p_type) {
 		VariantInternal::initialize(&r_value, p_type);
+		return;
+	}
+	switch (p_type) {
+		case Variant::PACKED_BYTE_ARRAY:
+			unshare_packed_array<uint8_t>(r_value);
+			break;
+		case Variant::PACKED_INT32_ARRAY:
+			unshare_packed_array<int32_t>(r_value);
+			break;
+		case Variant::PACKED_INT64_ARRAY:
+			unshare_packed_array<int64_t>(r_value);
+			break;
+		case Variant::PACKED_FLOAT32_ARRAY:
+			unshare_packed_array<float>(r_value);
+			break;
+		case Variant::PACKED_FLOAT64_ARRAY:
+			unshare_packed_array<double>(r_value);
+			break;
+		case Variant::PACKED_STRING_ARRAY:
+			unshare_packed_array<String>(r_value);
+			break;
+		case Variant::PACKED_VECTOR2_ARRAY:
+			unshare_packed_array<Vector2>(r_value);
+			break;
+		case Variant::PACKED_VECTOR3_ARRAY:
+			unshare_packed_array<Vector3>(r_value);
+			break;
+		case Variant::PACKED_COLOR_ARRAY:
+			unshare_packed_array<Color>(r_value);
+			break;
+		case Variant::PACKED_VECTOR4_ARRAY:
+			unshare_packed_array<Vector4>(r_value);
+			break;
+		default:
+			break;
 	}
 }
 

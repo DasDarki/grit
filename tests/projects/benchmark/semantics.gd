@@ -221,6 +221,37 @@ static func iteration() -> Array:
 	return log
 
 
+# Packed array results must not change variables that were copied from an earlier result of the same type. Each case
+# is its own function without array literals, so its temporaries are reused without being cleared in between.
+static func packed_results() -> Array:
+	return [count_split_pairs(), keep_packed_result(), packed_result_into_itself()]
+
+
+static func count_split_pairs() -> int:
+	var count := 0
+	for pair in "a=1,b=2,c=3".split(","):
+		var parts := pair.split("=", true, 1)
+		count += parts.size() - 1
+	return count
+
+
+static func keep_packed_result() -> String:
+	var kept := pass_packed(PackedStringArray())
+	var later := "x,y,z".split(",").size()
+	return "%s %d" % [kept, later]
+
+
+static func pass_packed(list: PackedStringArray) -> PackedStringArray:
+	return list
+
+
+static func packed_result_into_itself() -> PackedStringArray:
+	var words := PackedStringArray(["a", "b", "c"])
+	words = words.slice(1)
+	words = words + PackedStringArray(["d"])
+	return words
+
+
 static func matching(value) -> String:
 	match value:
 		1:
