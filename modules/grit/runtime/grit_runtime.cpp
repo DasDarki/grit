@@ -12,6 +12,50 @@
 
 namespace GritRuntime {
 
+// The value is kept, because the call writing the result may read r_value too (e.g. `list = list.slice(1)`), and the
+// Vector inside is copy-on-write, so its elements aren't copied.
+template <typename T>
+static void unshare_packed_array_of(Variant &r_value) {
+	r_value = Variant(VariantInternalAccessor<Vector<T>>::get(&r_value));
+}
+
+void unshare_packed_array(Variant &r_value) {
+	switch (r_value.get_type()) {
+		case Variant::PACKED_BYTE_ARRAY:
+			unshare_packed_array_of<uint8_t>(r_value);
+			break;
+		case Variant::PACKED_INT32_ARRAY:
+			unshare_packed_array_of<int32_t>(r_value);
+			break;
+		case Variant::PACKED_INT64_ARRAY:
+			unshare_packed_array_of<int64_t>(r_value);
+			break;
+		case Variant::PACKED_FLOAT32_ARRAY:
+			unshare_packed_array_of<float>(r_value);
+			break;
+		case Variant::PACKED_FLOAT64_ARRAY:
+			unshare_packed_array_of<double>(r_value);
+			break;
+		case Variant::PACKED_STRING_ARRAY:
+			unshare_packed_array_of<String>(r_value);
+			break;
+		case Variant::PACKED_VECTOR2_ARRAY:
+			unshare_packed_array_of<Vector2>(r_value);
+			break;
+		case Variant::PACKED_VECTOR3_ARRAY:
+			unshare_packed_array_of<Vector3>(r_value);
+			break;
+		case Variant::PACKED_COLOR_ARRAY:
+			unshare_packed_array_of<Color>(r_value);
+			break;
+		case Variant::PACKED_VECTOR4_ARRAY:
+			unshare_packed_array_of<Vector4>(r_value);
+			break;
+		default:
+			break;
+	}
+}
+
 static String script_display_name(const Ref<Script> &p_script) {
 #ifdef DEBUG_ENABLED
 	return GDScript::debug_get_script_name(p_script);
