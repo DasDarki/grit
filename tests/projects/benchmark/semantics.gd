@@ -226,7 +226,7 @@ static func iteration() -> Array:
 # Packed array results must not overwrite variables copied from an earlier result of the same type. Each case is its
 # own function without array literals, so its temporaries are reused without being cleared in between.
 static func packed_results() -> Array:
-	return [count_split_pairs(), count_native_list(), keep_packed_result()]
+	return [count_split_pairs(), count_native_list(), keep_packed_result(), keep_each_packed_type()]
 
 
 static func count_split_pairs() -> int:
@@ -239,9 +239,11 @@ static func count_split_pairs() -> int:
 
 # A native method's result as the loop's container, like the OS.get_cmdline_user_args() loop this bug was found in.
 # Node.ProcessMode's constants are core API, so the list doesn't change between Godot versions or builds.
+# All three arguments are passed (here and in keep_member_packed()): with a default left out, Grit calls the method
+# generically and the bug can't happen.
 static func count_native_list() -> int:
 	var count := 0
-	for constant in ClassDB.class_get_enum_constants(&"Node", &"ProcessMode"):
+	for constant in ClassDB.class_get_enum_constants(&"Node", &"ProcessMode", true):
 		var parts := constant.split("_")
 		count += parts.size() - 1
 	return count
@@ -253,9 +255,36 @@ static func keep_packed_result() -> String:
 	return "%s %d" % [kept, later]
 
 
+# Every packed array type: each array is kept empty, then a non-empty result of the same type is made. Grit reuses one
+# temporary for results of any type, so each kept array is followed directly by a result of its own type. The buffer
+# is 96 bytes, a multiple of every element size, in single and double precision builds.
+static func keep_each_packed_type() -> Array:
+	var bytes := PackedByteArray()
+	var buffer := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".to_utf8_buffer()
+	var int32s := PackedInt32Array()
+	var sizes := buffer.to_int32_array().size()
+	var int64s := PackedInt64Array()
+	sizes += buffer.to_int64_array().size()
+	var float32s := PackedFloat32Array()
+	sizes += buffer.to_float32_array().size()
+	var float64s := PackedFloat64Array()
+	sizes += buffer.to_float64_array().size()
+	var strings := PackedStringArray()
+	sizes += "a,b".split(",").size()
+	var vector2s := PackedVector2Array()
+	sizes += buffer.to_vector2_array().size()
+	var vector3s := PackedVector3Array()
+	sizes += buffer.to_vector3_array().size()
+	var colors := PackedColorArray()
+	sizes += buffer.to_color_array().size()
+	var vector4s := PackedVector4Array()
+	sizes += buffer.to_vector4_array().size()
+	return [bytes, int32s, int64s, float32s, float64s, strings, vector2s, vector3s, colors, vector4s, sizes]
+
+
 func keep_member_packed() -> String:
 	_kept = PackedStringArray()
-	var later := ClassDB.class_get_enum_constants(&"Node", &"ProcessMode").size()
+	var later := ClassDB.class_get_enum_constants(&"Node", &"ProcessMode", true).size()
 	return "%s %d" % [_kept, later]
 
 

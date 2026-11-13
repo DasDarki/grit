@@ -132,7 +132,7 @@ void unshare_packed_array(Variant &r_value);
 _FORCE_INLINE_ void prepare(Variant &r_value, Variant::Type p_type) {
 	if (r_value.get_type() != p_type) {
 		VariantInternal::initialize(&r_value, p_type);
-	} else if (p_type >= Variant::PACKED_BYTE_ARRAY && p_type <= Variant::PACKED_VECTOR4_ARRAY) {
+	} else if (Variant::PACKED_BYTE_ARRAY <= p_type && p_type <= Variant::PACKED_VECTOR4_ARRAY) {
 		unshare_packed_array(r_value);
 	}
 }
