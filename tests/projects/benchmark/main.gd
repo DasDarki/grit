@@ -56,6 +56,7 @@ func check_semantics() -> void:
 	report("builtin_calls", Semantics.builtin_calls())
 	report("iteration", Semantics.iteration())
 	report("packed_results", Semantics.packed_results())
+	report("packed_member_result", Semantics.new().keep_member_packed())
 	report("matching", [Semantics.matching(1), Semantics.matching(1.0), Semantics.matching(1.5), Semantics.matching("text"), Semantics.matching([1, 2]), Semantics.matching(null), Semantics.matching(Vector2()), Semantics.matching_typed(2), Semantics.matching_typed(5)])
 	if OS.is_debug_build():
 		report("divide_by_zero", Semantics.divide(1, 0))

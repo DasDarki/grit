@@ -12,8 +12,6 @@
 
 namespace GritRuntime {
 
-// The value is kept, because the call writing the result may read r_value too (e.g. `list = list.slice(1)`), and the
-// Vector inside is copy-on-write, so its elements aren't copied.
 template <typename T>
 static void unshare_packed_array_of(Variant &r_value) {
 	r_value = Variant(VariantInternalAccessor<Vector<T>>::get(&r_value));

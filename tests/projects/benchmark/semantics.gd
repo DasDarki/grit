@@ -2,6 +2,8 @@ extends RefCounted
 
 const PRIMES := [2, 3, 5, 7]
 
+var _kept := PackedStringArray()
+
 
 static func wrapping_add(value: int) -> int:
 	return value + 1
@@ -221,10 +223,10 @@ static func iteration() -> Array:
 	return log
 
 
-# Packed array results must not change variables that were copied from an earlier result of the same type. Each case
-# is its own function without array literals, so its temporaries are reused without being cleared in between.
+# Packed array results must not overwrite variables copied from an earlier result of the same type. Each case is its
+# own function without array literals, so its temporaries are reused without being cleared in between.
 static func packed_results() -> Array:
-	return [count_split_pairs(), keep_packed_result(), packed_result_into_itself()]
+	return [count_split_pairs(), count_native_list(), keep_packed_result()]
 
 
 static func count_split_pairs() -> int:
@@ -235,21 +237,26 @@ static func count_split_pairs() -> int:
 	return count
 
 
+# A native method's result as the loop's container, like the OS.get_cmdline_user_args() loop this bug was found in.
+# Node.ProcessMode's constants are core API, so the list doesn't change between Godot versions or builds.
+static func count_native_list() -> int:
+	var count := 0
+	for constant in ClassDB.class_get_enum_constants(&"Node", &"ProcessMode"):
+		var parts := constant.split("_")
+		count += parts.size() - 1
+	return count
+
+
 static func keep_packed_result() -> String:
-	var kept := pass_packed(PackedStringArray())
+	var kept := PackedStringArray()
 	var later := "x,y,z".split(",").size()
 	return "%s %d" % [kept, later]
 
 
-static func pass_packed(list: PackedStringArray) -> PackedStringArray:
-	return list
-
-
-static func packed_result_into_itself() -> PackedStringArray:
-	var words := PackedStringArray(["a", "b", "c"])
-	words = words.slice(1)
-	words = words + PackedStringArray(["d"])
-	return words
+func keep_member_packed() -> String:
+	_kept = PackedStringArray()
+	var later := ClassDB.class_get_enum_constants(&"Node", &"ProcessMode").size()
+	return "%s %d" % [_kept, later]
 
 
 static func matching(value) -> String:
