@@ -124,16 +124,13 @@ _FORCE_INLINE_ T *internal_pointer(Variant &r_value) {
 	return &VariantInternalAccessor<T>::get(&r_value);
 }
 
-// Copies of a Variant that holds a packed array share one PackedArrayRef. Gives r_value a PackedArrayRef of its own, so
-// a result written through internal_pointer() doesn't also change every local or member copied from r_value. Out of
-// line, because prepare() is inlined into every result write.
-void unshare_packed_array(Variant &r_value);
+static_assert(int(Variant::PACKED_VECTOR4_ARRAY) + 1 == int(Variant::VARIANT_MAX), "prepare() assumes the packed array types are the last Variant types.");
 
+// Packed arrays are always re-initialized, like in Godot's VariantTypeChanger: copies of a Variant share its packed
+// array, so a result written through internal_pointer() would change them too.
 _FORCE_INLINE_ void prepare(Variant &r_value, Variant::Type p_type) {
-	if (r_value.get_type() != p_type) {
+	if (r_value.get_type() != p_type || (Variant::PACKED_BYTE_ARRAY <= p_type && p_type <= Variant::PACKED_VECTOR4_ARRAY)) {
 		VariantInternal::initialize(&r_value, p_type);
-	} else if (Variant::PACKED_BYTE_ARRAY <= p_type && p_type <= Variant::PACKED_VECTOR4_ARRAY) {
-		unshare_packed_array(r_value);
 	}
 }
 
