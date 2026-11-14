@@ -124,10 +124,8 @@ _FORCE_INLINE_ T *internal_pointer(Variant &r_value) {
 	return &VariantInternalAccessor<T>::get(&r_value);
 }
 
-static_assert(int(Variant::PACKED_VECTOR4_ARRAY) + 1 == int(Variant::VARIANT_MAX), "prepare() assumes the packed array types are the last Variant types.");
+static_assert(static_cast<int>(Variant::PACKED_VECTOR4_ARRAY) + 1 == static_cast<int>(Variant::VARIANT_MAX), "prepare() assumes the packed array types are the last Variant types.");
 
-// Packed arrays are always re-initialized, like in Godot's VariantTypeChanger: copies of a Variant share its packed
-// array, so a result written through internal_pointer() would change them too.
 _FORCE_INLINE_ void prepare(Variant &r_value, Variant::Type p_type) {
 	if (r_value.get_type() != p_type || (Variant::PACKED_BYTE_ARRAY <= p_type && p_type <= Variant::PACKED_VECTOR4_ARRAY)) {
 		VariantInternal::initialize(&r_value, p_type);
