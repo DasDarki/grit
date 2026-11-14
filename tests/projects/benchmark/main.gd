@@ -55,6 +55,7 @@ func check_semantics() -> void:
 	report("dynamic_strings", [Semantics.dynamic_strings("a", "b"), Semantics.dynamic_strings([1], [2])])
 	report("builtin_calls", Semantics.builtin_calls())
 	report("iteration", Semantics.iteration())
+	report("packed_results", [Semantics.count_split_pairs(), Semantics.count_packed_defaults()])
 	report("matching", [Semantics.matching(1), Semantics.matching(1.0), Semantics.matching(1.5), Semantics.matching("text"), Semantics.matching([1, 2]), Semantics.matching(null), Semantics.matching(Vector2()), Semantics.matching_typed(2), Semantics.matching_typed(5)])
 	if OS.is_debug_build():
 		report("divide_by_zero", Semantics.divide(1, 0))

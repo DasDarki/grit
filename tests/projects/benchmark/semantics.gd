@@ -221,6 +221,21 @@ static func iteration() -> Array:
 	return log
 
 
+# A packed array result must not overwrite the loop's container, which shares the temporary the result is written to.
+static func count_split_pairs() -> int:
+	var count := 0
+	for pair in "a=1,b=2,c=3".split(","):
+		var parts := pair.split("=", true, 1)
+		count += parts.size() - 1
+	return count
+
+
+# The same for a parameter: the second default is written to the temporary the first one was copied from. It comes
+# from a native method, with all arguments passed (with a default left out, Grit calls the method generically).
+static func count_packed_defaults(first := "a,b".split(","), second := ClassDB.class_get_enum_constants(&"Node", &"ProcessMode", true)) -> int:
+	return first.size() * 10 + second.size()
+
+
 static func matching(value) -> String:
 	match value:
 		1:
