@@ -8,6 +8,8 @@ import re
 import shutil
 import subprocess
 import sys
+import secrets
+import base64
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -112,6 +114,9 @@ def scons_command():
 
 
 def build(arguments):
+    if getattr(arguments, "encrypt", False):
+        define_pck_encryption()
+
     command = [
         *scons_command(),
         f"platform={host_platform()}",
@@ -155,6 +160,10 @@ def export(arguments):
     engine = Path(arguments.engine).resolve()
     project = Path(arguments.project).resolve()
     output = Path(arguments.output).resolve()
+
+    if getattr(arguments, "encrypt", False):
+        define_pck_encryption()
+
     executable = perform_export(engine, project, arguments.preset, output, arguments.target, arguments.jobs, arguments.scons_arguments)
     print(f"Run the game with: {executable}")
 
@@ -191,6 +200,9 @@ def game(arguments):
     project = Path(arguments.project).resolve()
     if not (project / "project.godot").exists():
         sys.exit(f"{project} is not a Godot project (no project.godot).")
+
+    if getattr(arguments, "encrypt", False):
+        define_pck_encryption()
 
     ensure_engine_ready(engine, arguments.jobs, arguments.scons_arguments)
 
@@ -570,6 +582,46 @@ def install(arguments):
         print(f'  export PATH="{bin_directory}:$PATH"')
 
 
+def set_pck_key(key = None, save = True):
+    # AES-256
+    if key == None:
+        key = base64.b64encode(secrets.token_bytes(32)).decode('utf-8')
+    
+    if save:
+        current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+        env_file = current_dir / ".env"
+        with open(env_file, "a", encoding="utf-8") as f:
+            f.write(f"SCRIPT_AES256_ENCRYPTION_KEY={key}\n")
+
+        print(f"You script encryption key is: {key}\nCan be found in: {env_file}\n\n")
+    else:
+        print(f"You script encryption key is: {key}\n\n")
+
+    os.environ["SCRIPT_AES256_ENCRYPTION_KEY"] = key
+
+
+def get_pck_key():
+    key = os.getenv("SCRIPT_AES256_ENCRYPTION_KEY")
+
+    if key != None:
+        return key
+
+    current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+    env_file = current_dir / ".env"
+
+    if env_file.exists():
+        with open(env_file, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("SCRIPT_AES256_ENCRYPTION_KEY="):
+                    return line.strip().split("=", 1)[1]
+
+    return None
+
+
+def define_pck_encryption():
+    set_pck_key(get_pck_key(), True)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Grit development tool")
     parser.add_argument("--engine", default=str(DEFAULT_ENGINE), help="Godot source tree used for building")
@@ -583,6 +635,7 @@ def main():
     build_parser.add_argument("target", choices=["editor", "template_debug", "template_release"])
     build_parser.add_argument("--generated", help="Directory with generated C++ to link into the build")
     build_parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
+    build_parser.add_argument("--encrypt", action="store_true", help="Generate a key for pck encryption or rehuse a generated key")
     build_parser.set_defaults(handler=build)
 
     export_parser = commands.add_parser("export", help="Export a project and build its native export template")
@@ -591,6 +644,7 @@ def main():
     export_parser.add_argument("output", help="Path of the exported .pck")
     export_parser.add_argument("--target", default="template_release", choices=["template_debug", "template_release"])
     export_parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
+    export_parser.add_argument("--encrypt", action="store_true", help="Generate a key for pck encryption or rehuse a generated key")
     export_parser.set_defaults(handler=export)
 
     compare_parser = commands.add_parser("compare", help="Run an exported pack with the VM and natively and compare")
@@ -614,6 +668,7 @@ def main():
     game_parser.add_argument("--target", default="template_release", choices=["template_debug", "template_release"])
     game_parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
     game_parser.add_argument("--no-archive", action="store_true", help="Skip building the .tar.gz archive")
+    game_parser.add_argument("--encrypt", action="store_true", help="Generate a key for pck encryption or rehuse a generated key")
     game_parser.set_defaults(handler=game)
 
     package_parser = commands.add_parser("package", help="Copy the built editor and templates into a directory for release")
