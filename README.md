@@ -165,6 +165,23 @@ it and select that binary as the custom template in your export preset:
 python3 tools/grit.py build template_release --generated path/to/project/.godot/grit/generated
 ```
 
+### Compiling with an encryption key
+
+To create an editor/template using an AES256 encryption key, you must add the --encrypt parameter.
+
+```sh
+# Build Editor
+python3 tools/grit.py build editor --encrypt
+
+# Build Template
+python3 tools/grit.py build template_release --generated path/to/project/.godot/grit/generated --encrypt
+```
+
+This creates or retrieves an AES256 key as an environment variable, enabling the creation of an editor/template capable of handling PCK encryption.
+
+Keep in mind that you must add the key to your export preset to be able to export your project with PCK encryption, following the same steps outlined in the official Godot documentation.
+
+
 ### Settings
 
 | Setting | Default | Description |
