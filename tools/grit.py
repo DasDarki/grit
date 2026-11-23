@@ -584,23 +584,24 @@ def install(arguments):
 
 def create_pck_key(project_dir = None):
     # AES-256
-    key = secrets.token_bytes(32)
-    readable_key = base64.b64encode(key).decode('utf-8')
+    key = secrets.token_bytes(32).hex()
 
     if project_dir is None or not Path(project_dir).is_dir():
         project_dir = Path.cwd()
+    else:
+        project_dir = Path(project_dir)
 
     # Append Encryption Key
-    env_file = Path(project_dir) / ".env"
+    env_file = project_dir / ".env"
 
     lines = []
     if env_file.is_file():
         lines = [
             l for l in env_file.read_text(encoding="utf-8").splitlines()
-            if not l.startswith(f"AES_KEY_B64=")
+            if not l.startswith("SCRIPT_AES256_ENCRYPTION_KEY=")
         ]
         
-    lines.append(f"AES_KEY_B64={readable_key}")
+    lines.append(f"SCRIPT_AES256_ENCRYPTION_KEY={key}")
     env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     # Special case: ensure that .env is included in .gitignore only if the file exist.
@@ -615,11 +616,10 @@ def create_pck_key(project_dir = None):
                     f.write("\n")
                 f.write(".env\n")
 
-    key_hex = key.hex()
-    print(f"\nYou script encryption key is: {key_hex}\nSaved in: {env_file}\n\n")
+    print(f"\nYour script encryption key is: {key}\nSaved in: {env_file}\n\n")
 
 
-    os.environ["SCRIPT_AES256_ENCRYPTION_KEY"] = key_hex
+    os.environ["SCRIPT_AES256_ENCRYPTION_KEY"] = key
 
 
 def restore_pck_key(project_dir = None):
@@ -648,16 +648,14 @@ def restore_pck_key(project_dir = None):
 
         for line in env_file.read_text(encoding="utf-8").splitlines():
             key, equ, value = line.partition("=")
-            if equ and key.strip() == "AES_KEY_B64":
-                key = base64.b64decode(value.strip())
+            if equ and key.strip() == "SCRIPT_AES256_ENCRYPTION_KEY":
+                key = value.strip()
 
-                if len(key) != 32:
-                    raise ValueError("AES-256 is corrupted, 32 bytes is required!")
+                if len(key) != 64:
+                    raise ValueError("AES-256 is corrupted, key must be 32 bytes (64 hex characters)!")
 
-                env_key = key.hex()
-
-                os.environ["SCRIPT_AES256_ENCRYPTION_KEY"] = env_key
-                return env_key
+                os.environ["SCRIPT_AES256_ENCRYPTION_KEY"] = key
+                return key
 
     return None
 
