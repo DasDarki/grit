@@ -179,7 +179,7 @@ python3 tools/grit.py build template_release --generated path/to/project/.godot/
 
 This creates or retrieves an AES256 key as an environment variable, enabling the creation of an editor/template capable of handling PCK encryption.
 
-Keep in mind that you must add the key to your export preset to be able to export your project with PCK encryption, following the same steps outlined in the official Godot documentation.
+Keep in mind that you must add the key to your export preset to be able to export your project with PCK encryption, following the same steps outlined in the [official Godot documentation](https://docs.godotengine.org/en/stable/engine_details/development/compiling/compiling_with_script_encryption_key.html) starting from step 4.
 
 
 ### Settings
