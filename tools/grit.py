@@ -162,7 +162,7 @@ def export(arguments):
     output = Path(arguments.output).resolve()
 
     if getattr(arguments, "encrypt", False):
-        define_pck_encryption()
+        define_pck_encryption(project)
 
     executable = perform_export(engine, project, arguments.preset, output, arguments.target, arguments.jobs, arguments.scons_arguments)
     print(f"Run the game with: {executable}")
@@ -202,7 +202,7 @@ def game(arguments):
         sys.exit(f"{project} is not a Godot project (no project.godot).")
 
     if getattr(arguments, "encrypt", False):
-        define_pck_encryption()
+        define_pck_encryption(project)
 
     ensure_engine_ready(engine, arguments.jobs, arguments.scons_arguments)
 
@@ -582,44 +582,92 @@ def install(arguments):
         print(f'  export PATH="{bin_directory}:$PATH"')
 
 
-def set_pck_key(key = None, save = True):
+def create_pck_key(project_dir = None):
     # AES-256
-    if key == None:
-        key = base64.b64encode(secrets.token_bytes(32)).decode('utf-8')
-    
-    if save:
-        current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
-        env_file = current_dir / ".env"
-        with open(env_file, "a", encoding="utf-8") as f:
-            f.write(f"SCRIPT_AES256_ENCRYPTION_KEY={key}\n")
+    key = secrets.token_bytes(32)
+    readable_key = base64.b64encode(key).decode('utf-8')
 
-        print(f"You script encryption key is: {key}\nCan be found in: {env_file}\n\n")
-    else:
-        print(f"You script encryption key is: {key}\n\n")
+    if project_dir is None or not Path(project_dir).is_dir():
+        project_dir = Path.cwd()
 
-    os.environ["SCRIPT_AES256_ENCRYPTION_KEY"] = key
+    # Append Encryption Key
+    env_file = Path(project_dir) / ".env"
+
+    lines = []
+    if env_file.is_file():
+        lines = [
+            l for l in env_file.read_text(encoding="utf-8").splitlines()
+            if not l.startswith(f"AES_KEY_B64=")
+        ]
+        
+    lines.append(f"AES_KEY_B64={readable_key}")
+    env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    # Special case: ensure that .env is included in .gitignore only if the file exist.
+    dot_git_ignore = project_dir / ".gitignore"
+
+    if dot_git_ignore.is_file():
+        content = dot_git_ignore.read_text(encoding="utf-8")
+        
+        if ".env" not in (l.strip() for l in content.splitlines()):
+            with dot_git_ignore.open("a", encoding="utf-8") as f:
+                if content and not content.endswith("\n"):
+                    f.write("\n")
+                f.write(".env\n")
+
+    key_hex = key.hex()
+    print(f"\nYou script encryption key is: {key_hex}\nSaved in: {env_file}\n\n")
 
 
-def get_pck_key():
+    os.environ["SCRIPT_AES256_ENCRYPTION_KEY"] = key_hex
+
+
+def restore_pck_key(project_dir = None):
     key = os.getenv("SCRIPT_AES256_ENCRYPTION_KEY")
 
-    if key != None:
+    if key is not None:
+        if len(key) != 64:
+            raise ValueError("AES-256 key must be 32 bytes (64 hex characters)")
         return key
+    
+    current_dir = Path.cwd().resolve()
+    check_scope = [current_dir]
 
-    current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
-    env_file = current_dir / ".env"
+    if project_dir is not None:
+        project_dir = Path(project_dir).resolve()
 
-    if env_file.exists():
-        with open(env_file, "r", encoding="utf-8") as f:
-            for line in f:
-                if line.startswith("SCRIPT_AES256_ENCRYPTION_KEY="):
-                    return line.strip().split("=", 1)[1]
+        if project_dir != current_dir:
+            check_scope.insert(0, project_dir)
+
+
+    for directory in check_scope:
+        env_file = Path(directory) / ".env"
+
+        if not env_file.is_file():
+            continue
+
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            key, equ, value = line.partition("=")
+            if equ and key.strip() == "AES_KEY_B64":
+                key = base64.b64decode(value.strip())
+
+                if len(key) != 32:
+                    raise ValueError("AES-256 is corrupted, 32 bytes is required!")
+
+                env_key = key.hex()
+
+                os.environ["SCRIPT_AES256_ENCRYPTION_KEY"] = env_key
+                return env_key
 
     return None
 
 
-def define_pck_encryption():
-    set_pck_key(get_pck_key(), True)
+def define_pck_encryption(project_dir = None):
+    if project_dir is None:
+        project_dir = Path.cwd()
+
+    if restore_pck_key(project_dir) is None:
+        create_pck_key(project_dir)
 
 
 def main():
@@ -635,7 +683,7 @@ def main():
     build_parser.add_argument("target", choices=["editor", "template_debug", "template_release"])
     build_parser.add_argument("--generated", help="Directory with generated C++ to link into the build")
     build_parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
-    build_parser.add_argument("--encrypt", action="store_true", help="Generate a key for pck encryption or rehuse a generated key")
+    build_parser.add_argument("--encrypt", action="store_true", help="Generate a key for PCK encryption or reuse a generated key")
     build_parser.set_defaults(handler=build)
 
     export_parser = commands.add_parser("export", help="Export a project and build its native export template")
@@ -644,7 +692,7 @@ def main():
     export_parser.add_argument("output", help="Path of the exported .pck")
     export_parser.add_argument("--target", default="template_release", choices=["template_debug", "template_release"])
     export_parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
-    export_parser.add_argument("--encrypt", action="store_true", help="Generate a key for pck encryption or rehuse a generated key")
+    export_parser.add_argument("--encrypt", action="store_true", help="Generate a key for PCK encryption or reuse a generated key")
     export_parser.set_defaults(handler=export)
 
     compare_parser = commands.add_parser("compare", help="Run an exported pack with the VM and natively and compare")
@@ -668,7 +716,7 @@ def main():
     game_parser.add_argument("--target", default="template_release", choices=["template_debug", "template_release"])
     game_parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
     game_parser.add_argument("--no-archive", action="store_true", help="Skip building the .tar.gz archive")
-    game_parser.add_argument("--encrypt", action="store_true", help="Generate a key for pck encryption or rehuse a generated key")
+    game_parser.add_argument("--encrypt", action="store_true", help="Generate a key for PCK encryption or reuse a generated key")
     game_parser.set_defaults(handler=game)
 
     package_parser = commands.add_parser("package", help="Copy the built editor and templates into a directory for release")
