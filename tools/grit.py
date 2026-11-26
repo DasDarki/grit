@@ -9,7 +9,6 @@ import shutil
 import subprocess
 import sys
 import secrets
-import base64
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -89,6 +88,11 @@ def find_binary(engine, target, scons_arguments=()):
 
 def setup(arguments):
     engine = Path(arguments.engine).resolve()
+
+    # Ensure that the key exists during the initial setup, otherwise generate it and save it in the .env file.
+    if getattr(arguments, "encrypt", False):
+        define_pck_encryption()
+
     if not engine.exists():
         if arguments.godot_repository:
             run(["git", "-C", arguments.godot_repository, "worktree", "add", "--detach", engine, GODOT_TAG])
@@ -162,7 +166,7 @@ def export(arguments):
     output = Path(arguments.output).resolve()
 
     if getattr(arguments, "encrypt", False):
-        define_pck_encryption(project)
+        define_pck_encryption()
 
     executable = perform_export(engine, project, arguments.preset, output, arguments.target, arguments.jobs, arguments.scons_arguments)
     print(f"Run the game with: {executable}")
@@ -202,7 +206,7 @@ def game(arguments):
         sys.exit(f"{project} is not a Godot project (no project.godot).")
 
     if getattr(arguments, "encrypt", False):
-        define_pck_encryption(project)
+        define_pck_encryption()
 
     ensure_engine_ready(engine, arguments.jobs, arguments.scons_arguments)
 
@@ -602,19 +606,7 @@ def create_pck_key(project_dir = None):
         ]
         
     lines.append(f"SCRIPT_AES256_ENCRYPTION_KEY={key}")
-    env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-    # Special case: ensure that .env is included in .gitignore only if the file exist.
-    dot_git_ignore = project_dir / ".gitignore"
-
-    if dot_git_ignore.is_file():
-        content = dot_git_ignore.read_text(encoding="utf-8")
-        
-        if ".env" not in (l.strip() for l in content.splitlines()):
-            with dot_git_ignore.open("a", encoding="utf-8") as f:
-                if content and not content.endswith("\n"):
-                    f.write("\n")
-                f.write(".env\n")
+    env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")  
 
     print(f"\nYour script encryption key is: {key}\nSaved in: {env_file}\n\n")
 
@@ -627,7 +619,7 @@ def restore_pck_key(project_dir = None):
 
     if key is not None:
         if len(key) != 64:
-            raise ValueError("AES-256 key must be 32 bytes (64 hex characters)")
+            sys.exit("AES-256 key must be 32 bytes (64 hex characters)")
         return key
     
     current_dir = Path.cwd().resolve()
@@ -652,7 +644,7 @@ def restore_pck_key(project_dir = None):
                 key = value.strip()
 
                 if len(key) != 64:
-                    raise ValueError("AES-256 is corrupted, key must be 32 bytes (64 hex characters)!")
+                    sys.exit("AES-256 is corrupted, key must be 32 bytes (64 hex characters)!")
 
                 os.environ["SCRIPT_AES256_ENCRYPTION_KEY"] = key
                 return key
@@ -660,9 +652,8 @@ def restore_pck_key(project_dir = None):
     return None
 
 
-def define_pck_encryption(project_dir = None):
-    if project_dir is None:
-        project_dir = Path.cwd()
+def define_pck_encryption():
+    project_dir = Path.cwd()
 
     if restore_pck_key(project_dir) is None:
         create_pck_key(project_dir)
@@ -675,6 +666,7 @@ def main():
 
     setup_parser = commands.add_parser("setup", help="Check out Godot and apply the Grit patches")
     setup_parser.add_argument("--godot-repository", help="Existing Godot clone to create a worktree from")
+    setup_parser.add_argument("--encrypt", action="store_true", help="Generate a key for PCK encryption or reuse a generated key")
     setup_parser.set_defaults(handler=setup)
 
     build_parser = commands.add_parser("build", help="Build Godot with the Grit module")
