@@ -221,6 +221,22 @@ static func iteration() -> Array:
 	return log
 
 
+# A packed array result must not overwrite the loop's container, which shares the temporary the result is written to.
+static func count_split_pairs() -> int:
+	var count := 0
+	for pair in "a=1,b=2,c=3".split(","):
+		var parts := pair.split("=", true, 1)
+		count += parts.size() - 1
+	return count
+
+
+# The same for parameters: the second default is written to the temporary the first was copied from. Keep both as
+# defaults: passed in, each gets its own temporary, and from Godot 4.8 on, the body clears them after each statement.
+# The second calls a native method with all arguments passed (with one left out, Grit calls it generically).
+static func count_packed_defaults(first := "a,b".split(","), second := ClassDB.class_get_enum_constants(&"Node", &"ProcessMode", true)) -> Array:
+	return [first.size(), second.size()]
+
+
 static func matching(value) -> String:
 	match value:
 		1:
